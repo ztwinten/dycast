@@ -1,5 +1,6 @@
 /**
  * emoji 列表
+ *  - https://www.douyin.com/aweme/v1/web/emoji/list
  */
 export const emojis: Record<string, string> = {
   '[微笑]':

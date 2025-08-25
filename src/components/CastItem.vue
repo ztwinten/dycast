@@ -15,6 +15,7 @@
       <label class="nickname">[{{ user?.name ? user.name : 'unknown' }}]：</label>
       <template v-for="item in doms">
         <span v-if="item.node === 'text'" class="text">{{ item.text }}</span>
+        <span v-if="item.node === 'user'" class="touser">{{ item.text }}</span>
         <img v-if="item.node === 'icon'" class="icon" :title="item.text" :src="item.url" :alt="item.text" />
         <img v-if="item.node === 'emoji'" class="emoji" alt="会员表情" :src="item.url" />
       </template>
@@ -28,7 +29,7 @@ import { emojis } from '@/core/emoji';
 import { computed, ref } from 'vue';
 
 interface CastContentDOM {
-  node: 'text' | 'icon' | 'emoji';
+  node: 'text' | 'icon' | 'emoji' | 'user';
   url?: string;
   text?: string;
 }
@@ -80,6 +81,12 @@ const createRtfContent = function (content?: CastRtfContent[]): CastContentDOM[]
     switch (content[i].type) {
       case CastRtfContentType.TEXT:
         list.push(...createTextContent(item.text));
+        break;
+      case CastRtfContentType.USER:
+        list.push({
+          node: 'user',
+          text: item.text
+        });
         break;
       case CastRtfContentType.EMOJI:
         list.push({
@@ -151,10 +158,13 @@ const doms = computed(() => {
 $prefixColor: #38b48b;
 $nameColor: #9079ad;
 $textColor: #6b798e;
+$toUserColor: #e95464;
 
 $prefixDarkColor: #38b48b;
 $nameDarkColor: #83ccd2;
 $textDarkColor: #f7fcfe;
+
+$toUserDarkColor: #e83929;
 
 $giftText: #eba825;
 
@@ -178,11 +188,15 @@ $giftText: #eba825;
     color: $nameColor;
     flex-shrink: 0;
   }
-  .text {
+  .text,
+  .touser {
     color: $textColor;
     // line-height: 1rem;
     word-break: break-all;
     white-space: normal;
+  }
+  .touser {
+    color: $toUserColor;
   }
   .icon {
     width: 1.5rem;
@@ -230,6 +244,9 @@ $giftText: #eba825;
     }
     .text {
       color: $textDarkColor;
+    }
+    .touser {
+      color: $toUserDarkColor;
     }
   }
 }

@@ -26,6 +26,7 @@ import type {
 } from './model';
 import { getImInfo, getLiveInfo } from './request';
 import { getSignature } from './signature';
+import { logUserCast } from '@/utils/debugUtil';
 
 /**
  * 连接状态
@@ -123,7 +124,8 @@ export interface CastGift {
  */
 export enum CastRtfContentType {
   TEXT = 1,
-  EMOJI = 2
+  EMOJI = 2,
+  USER = 3
 }
 
 // 富文本
@@ -131,6 +133,7 @@ export interface CastRtfContent {
   type?: CastRtfContentType;
   text?: string;
   url?: string;
+  user?: CastUser;
 }
 
 export interface DyMessage {
@@ -913,19 +916,36 @@ export class DyCast {
     if (!data.pieces) return void 0;
     const pieces = data.pieces;
     const list: CastRtfContent[] = [];
+    /**
+     * pieces 类型
+     *  - type = 1  : 普通的聊天文本 : 关键字段(stringValue)
+     *  - type = 11 : @ 用户 : 关键字段(userValue.user)
+     *  - type = 15 : 合成表情 : 关键字段(imageValue)
+     */
     for (let i = 0; i < pieces.length; i++) {
-      if (!pieces[i].imageValue) {
-        list.push({
-          type: CastRtfContentType.TEXT,
-          text: pieces[i].stringValue
-        });
-      } else {
+      if (pieces[i].imageValue) {
+        // 合成表情
         let url = pieces[i].imageValue?.image?.urlList?.[0];
         let name = pieces[i].imageValue?.image?.content?.name;
         list.push({
           type: CastRtfContentType.EMOJI,
           text: name,
           url
+        });
+      } else if (pieces[i].userValue) {
+        // 艾特用户
+        let toUser = pieces[i].userValue?.user;
+        list.push({
+          type: CastRtfContentType.USER,
+          text: `@${toUser?.nickname}`,
+          user: this._getCastUser(toUser)
+        });
+      } else {
+        // 假定为普通文本类型
+        // 实际还可能是 giftValue 之类的
+        list.push({
+          type: CastRtfContentType.TEXT,
+          text: pieces[i].stringValue || ''
         });
       }
     }
