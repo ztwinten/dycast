@@ -1,51 +1,46 @@
 import { fileURLToPath, URL } from 'node:url';
-
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
-// import vueDevTools from 'vite-plugin-vue-devtools';
 
-// https://vite.dev/config/
+// 生产环境基础路径，使用自定义域名
+const baseUrl = process.env.NODE_ENV === 'production' 
+  ? 'https://xiaotangyuan.qzz.io' 
+  : '';
+
 export default defineConfig({
   plugins: [
     vue()
-    // vueDevTools(),
   ],
+  base: baseUrl, // 生产环境基础路径
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }
   },
   server: {
-    host: '0.0.0.0', // 允许局域网访问
+    host: '0.0.0.0',
+    port: 3000, // Replit默认端口
+    strictPort: true, // 强制使用指定端口
     proxy: {
       '/dylive': {
         target: 'https://live.douyin.com',
         changeOrigin: true,
         rewrite: path => path.replace(/^\/dylive/, ''),
-        // 重要：允许接收 Set-Cookie
         configure: proxy => {
-          // 拦截请求
           proxy.on('proxyReq', (proxyReq, req) => {
             const ua = req.headers['user-agent'] || '';
             const isMobile = /mobile|android|iphone|ipad/i.test(ua);
             if (isMobile) {
-              // 设置请求头 User-Agent 标识
-              // 防止移动端 302 重定向跳转
-              // 可根据自己的平台设置
               proxyReq.setHeader(
                 'User-Agent',
                 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Edg/136.0.0.0'
               );
             }
-            // 强制修改 Referer(这里可能无效，但并不影响)
             proxyReq.setHeader('Referer', 'https://live.douyin.com/');
           });
-          // 拦截响应
           proxy.on('proxyRes', proxyRes => {
-            // 确保 set-cookie 能正常设置到当前域下
             const setCookie = proxyRes.headers['set-cookie'];
             if (setCookie) {
-              // 移除 Domain 或替换为当前域
               const newCookie = setCookie.map(cookie =>
                 cookie
                   .replace(/; Domain=[^;]+/i, '')
@@ -59,17 +54,15 @@ export default defineConfig({
       },
       '/socket': {
         target: 'wss://webcast5-ws-web-lf.douyin.com',
-        changeOrigin: true, // 保持原始 Host，利于服务端识别 Cookie
+        changeOrigin: true,
         secure: true,
-        ws: true, // 启用 WebSocket 代理
+        ws: true,
         rewrite: path => path.replace(/^\/socket/, ''),
         configure: proxy => {
           proxy.on('proxyReqWs', (proxyReq, req) => {
             const ua = req.headers['user-agent'] || '';
             const isMobile = /mobile|android|iphone|ipad/i.test(ua);
-            // 这里可以不设置也
             if (isMobile) {
-              // 设置请求头 User-Agent 标识
               proxyReq.setHeader(
                 'User-Agent',
                 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Edg/136.0.0.0'
@@ -79,5 +72,18 @@ export default defineConfig({
         }
       }
     }
-  }
+  },
+  // 构建配置，确保生产环境资源正确引用
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+    sourcemap: false, // 生产环境关闭sourcemap
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['vue'],
+        },
+      },
+    },
+  },
 });
